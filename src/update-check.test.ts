@@ -53,13 +53,14 @@ describe('buildUpdateNotices', () => {
     expect(buildUpdateNotices({ cliVersion: '1.0.0', cache: null, now })).toEqual({});
   });
 
-  it('emits a CLI notice when registry version is newer', () => {
+  it('directs CLI updates to the fork when its version is newer', () => {
     const lines = buildUpdateNotices({
       cliVersion: '1.0.0',
       cache: { lastCheck: now, latestVersion: '1.0.1' },
       now,
     });
     expect(lines.cli).toContain('v1.0.0 → v1.0.1');
+    expect(lines.cli).toContain('npm install -g git+https://github.com/landian01/OpenCLI.git#main');
     expect(lines.extension).toBeUndefined();
   });
 
@@ -150,7 +151,7 @@ describe('independent update schedules', () => {
     if (cacheHome) fs.rmSync(cacheHome, { recursive: true, force: true });
   });
 
-  it.each(['npm', 'github'])('retries a failed %s lookup independently of the other cache', async (failedService) => {
+  it.each(['cli', 'github'])('retries a failed %s lookup independently of the other cache', async (failedService) => {
     cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'opencli-update-schedule-'));
     vi.doMock('node:os', () => ({ ...os, homedir: () => cacheHome }));
     vi.stubEnv('CI', '');
@@ -162,21 +163,22 @@ describe('independent update schedules', () => {
     const read = () => JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
     let fail = true;
     const fetchMock = vi.fn(async (url: string | URL | Request) => {
-      const service = String(url).includes('github.com') ? 'github' : 'npm';
+      const service = String(url).includes('api.github.com') ? 'github' : 'cli';
+      if (service === 'cli') expect(String(url)).toBe('https://raw.githubusercontent.com/landian01/OpenCLI/main/package.json');
       if (service === failedService && fail) return new Response('', { status: 403 });
-      return new Response(JSON.stringify(service === 'npm' ? { version: '9.0.0' }
+      return new Response(JSON.stringify(service === 'cli' ? { version: '9.0.0' }
         : [{ tag_name: 'ext-v9.0.0' }]));
     });
     vi.stubGlobal('fetch', fetchMock);
     vi.resetModules();
     const { checkForUpdateBackground } = await import('./update-check.js');
     checkForUpdateBackground();
-    const successKey = failedService === 'npm' ? 'latestExtensionVersion' : 'latestVersion';
-    const failedKey = failedService === 'npm' ? 'latestVersion' : 'latestExtensionVersion';
+    const successKey = failedService === 'cli' ? 'latestExtensionVersion' : 'latestVersion';
+    const failedKey = failedService === 'cli' ? 'latestVersion' : 'latestExtensionVersion';
     await vi.waitFor(() => expect(read()[successKey]).toBe('9.0.0'));
     expect(read()[failedKey]).toBeUndefined();
     expect(read().currentExtensionVersion).toBe('1.0.0');
-    const successfulCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes(failedService === 'npm' ? 'github.com' : 'npmjs.org')).length;
+    const successfulCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes(failedService === 'cli' ? 'api.github.com' : 'raw.githubusercontent.com')).length;
     const callsBeforeRetry = fetchMock.mock.calls.length;
     checkForUpdateBackground();
     expect(fetchMock).toHaveBeenCalledTimes(callsBeforeRetry);
@@ -188,6 +190,6 @@ describe('independent update schedules', () => {
     vi.resetModules();
     (await import('./update-check.js')).checkForUpdateBackground();
     await vi.waitFor(() => expect(read()[failedKey]).toBe('9.0.0'));
-    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes(failedService === 'npm' ? 'github.com' : 'npmjs.org'))).toHaveLength(successfulCalls);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes(failedService === 'cli' ? 'api.github.com' : 'raw.githubusercontent.com'))).toHaveLength(successfulCalls);
   });
 });

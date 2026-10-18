@@ -24,11 +24,11 @@ const CACHE_FILE = path.join(CACHE_DIR, 'update-check.json');
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
 const RETRY_INTERVAL_MS = 5 * 60 * 1000; // Back off failed requests without consuming the success window.
 const EXTENSION_STALE_MS = 7 * 24 * 60 * 60 * 1000; // 7d
-const NPM_REGISTRY_URL = 'https://registry.npmjs.org/@jackwener/opencli/latest';
+const CLI_PACKAGE_URL = 'https://raw.githubusercontent.com/landian01/OpenCLI/main/package.json';
 const GITHUB_RELEASES_URL = 'https://api.github.com/repos/jackwener/OpenCLI/releases?per_page=20';
 
 interface UpdateCache {
-  // CLI npm fetch fields — present once `checkForUpdateBackground` has succeeded.
+  // CLI package fetch fields — present once `checkForUpdateBackground` has succeeded.
   // Optional because the daemon may write the cache first via `recordExtensionVersion`.
   lastCheck?: number;
   latestVersion?: string;
@@ -107,7 +107,7 @@ function buildUpdateNotices({ cliVersion, cache, now }: NoticeInputs): NoticeLin
   if (cache.latestVersion && isNewer(cache.latestVersion, cliVersion)) {
     lines.cli =
       `\n  Update available: v${cliVersion} → v${cache.latestVersion}\n` +
-      `  Run: npm install -g @jackwener/opencli\n`;
+      `  Run: npm install -g git+https://github.com/landian01/OpenCLI.git#main\n`;
   }
   const { currentExtensionVersion, latestExtensionVersion, extensionLastSeenAt } = cache;
   if (
@@ -195,7 +195,7 @@ export function checkForUpdateBackground(): void {
     writeCacheMerge({ lastAttempt: now });
     void (async () => {
       try {
-        const res = await fetch(NPM_REGISTRY_URL, {
+        const res = await fetch(CLI_PACKAGE_URL, {
           signal: AbortSignal.timeout(3000),
           headers: { 'User-Agent': `opencli/${PKG_VERSION}` },
         });
