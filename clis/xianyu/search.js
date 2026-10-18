@@ -158,6 +158,7 @@ function buildSearchEvaluate({ keyword, searchFilter, extraFilterValue, fromFilt
           const city = clean(args.p_city || '');
           const area = clean(ex.area || '');
           const tagText = cleanTagList(ex.fishTags || ex.labels || ex.tags || ex.tagList || []);
+          const wantText = cleanTagList(ex.fishTags?.r3?.tagList).match(/([^\\s|]+)人想要/);
           collected.push({
             item_id: itemId,
             title,
@@ -166,7 +167,7 @@ function buildSearchEvaluate({ keyword, searchFilter, extraFilterValue, fromFilt
             brand: cleanFirst(ex.brand, ex.brandName, ex.detailParams?.brand),
             location: city || area,
             badge: cleanFirst(ex.badge, ex.creditText, ex.creditLevel, tagText),
-            want: clean(args.wantNum || ex.want || ''),
+            want: cleanFirst(wantText?.[1], args.wantNum, ex.want),
             url: 'https://www.goofish.com/item?id=' + itemId,
           });
           pageValidRows += 1;
