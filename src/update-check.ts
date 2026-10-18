@@ -107,7 +107,7 @@ function buildUpdateNotices({ cliVersion, cache, now }: NoticeInputs): NoticeLin
   if (cache.latestVersion && isNewer(cache.latestVersion, cliVersion)) {
     lines.cli =
       `\n  Update available: v${cliVersion} → v${cache.latestVersion}\n` +
-      `  Run: npm install -g git+https://github.com/landian01/OpenCLI.git#main\n`;
+      `  Run in the landian01/OpenCLI checkout: npm run update:fork\n`;
   }
   const { currentExtensionVersion, latestExtensionVersion, extensionLastSeenAt } = cache;
   if (

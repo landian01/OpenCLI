@@ -60,7 +60,7 @@ describe('buildUpdateNotices', () => {
       now,
     });
     expect(lines.cli).toContain('v1.0.0 → v1.0.1');
-    expect(lines.cli).toContain('npm install -g git+https://github.com/landian01/OpenCLI.git#main');
+    expect(lines.cli).toContain('landian01/OpenCLI checkout: npm run update:fork');
     expect(lines.extension).toBeUndefined();
   });
 
